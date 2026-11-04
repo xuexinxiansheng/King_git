@@ -1,0 +1,17 @@
+# 二进制产物：exe/zip 走 GitHub Releases 分发，不入库
+*.exe
+*.zip
+
+# 个人游戏存档与隐私数据（含 Steam 账号 ID，严禁上传）
+_savebackup/
+
+# 工作区会话数据
+.workbuddy/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 截图临时脚本
+.capture.py
