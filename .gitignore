@@ -13,6 +13,9 @@ build/
 dist/
 *.spec
 
+# CI 生成的构建信息
+src/_build_info.py
+
 # Python
 __pycache__/
 *.pyc

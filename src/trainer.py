@@ -110,6 +110,77 @@ def asset(name):
     return os.path.join(base, name).replace("\\", "/")
 
 
+# ------------------------------------------------------------------ 构建信息
+try:  # CI 打包时由 workflow 生成，本地跑源码时不存在
+    from _build_info import COMMIT, TAG, BUILT_AT
+except Exception:
+    COMMIT = TAG = BUILT_AT = "dev"
+
+
+def payload_version():
+    try:
+        with open(asset("payload.lua"), "r", encoding="utf-8") as f:
+            m = re.search(r'version\s*=\s*"([^"]+)"', f.read())
+        return m.group(1) if m else ""
+    except OSError:
+        return ""
+
+
+def selftest():
+    """打包产物自检，CI 里跑；退出码非 0 即判定打包坏了。"""
+    import hashlib
+    import tempfile
+
+    import PySide6
+
+    ok = True
+    lines = [
+        f"app={APP_NAME}",
+        f"tag={TAG} commit={COMMIT[:8]} built={BUILT_AT}",
+        f"frozen={bool(getattr(sys, 'frozen', False))} python={sys.version.split()[0]}",
+        f"pyside6={PySide6.__version__}",
+    ]
+
+    for name in ("payload.lua", "krbridge.dll"):
+        path = asset(name)
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                digest = hashlib.sha256(f.read()).hexdigest()[:12]
+            lines.append(f"asset {name}: ok {os.path.getsize(path)}B sha256={digest}")
+        else:
+            ok = False
+            lines.append(f"asset {name}: MISSING")
+
+    version = payload_version()
+    lines.append(f"payload_version={version or 'UNKNOWN'}")
+    ok = ok and bool(version)
+
+    try:
+        from PySide6.QtCore import QLibraryInfo
+
+        plugins = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)
+        platform = os.path.join(plugins, "platforms", "qwindows.dll")
+        if os.path.exists(platform):
+            lines.append(f"qt platform: ok {platform}")
+        else:
+            ok = False
+            lines.append(f"qt platform: MISSING {platform}")
+    except Exception as exc:  # noqa: BLE001
+        ok = False
+        lines.append(f"qt platform: ERROR {exc}")
+
+    report = "\n".join(lines)
+    if sys.stdout:  # --noconsole 打包后 stdout 为 None
+        print(report, flush=True)
+    try:
+        with open(os.path.join(tempfile.gettempdir(), "KR_Trainer_selftest.txt"),
+                  "w", encoding="utf-8") as f:
+            f.write(f"{report}\nresult={'PASS' if ok else 'FAIL'}\n")
+    except OSError:
+        pass
+    return 0 if ok else 1
+
+
 # ------------------------------------------------------------------ win32
 k32 = ctypes.WinDLL("kernel32", use_last_error=True)
 k32.CreateToolhelp32Snapshot.restype = w.HANDLE
@@ -1786,6 +1857,13 @@ QToolTip { background: #111111; color: #f5f0e8; border: 2px solid #111111; }
 
 
 def main():
+    if "--selftest" in sys.argv:
+        sys.exit(selftest())
+    if "--version" in sys.argv:
+        if sys.stdout:
+            print(f"{APP_NAME} | payload {payload_version()} | {TAG} {COMMIT[:8]} {BUILT_AT}")
+        sys.exit(0)
+
     QApplication.setHighDpiScaleFactorRoundingPolicy(
         Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
     app = QApplication(sys.argv)
