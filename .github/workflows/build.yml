@@ -58,6 +58,8 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           name: KingdomRushTrainer
@@ -70,7 +72,17 @@ jobs:
           $hash = (Get-FileHash dist\KingdomRush.exe -Algorithm SHA256).Hash.ToLower()
           "$hash  KingdomRush.exe" | Set-Content dist\KingdomRush.exe.sha256 -Encoding ascii
 
-      - name: 创建草稿 Release
+      - name: 从 CHANGELOG 生成 Release 说明
+        shell: pwsh
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          $md = Get-Content CHANGELOG.md -Raw -Encoding UTF8
+          $pattern = "(?ms)^##\s+" + [regex]::Escape($env:TAG) + "\b.*?(?=^##\s|\z)"
+          $body = if ($md -match $pattern) { $Matches[0].Trim() } else { "详见 CHANGELOG.md" }
+          $body | Set-Content release-body.md -Encoding UTF8
+
+      - name: 创建或更新草稿 Release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,7 +92,8 @@ jobs:
           gh release view $env:TAG 2>$null | Out-Null
           if ($LASTEXITCODE -eq 0) {
             gh release upload $env:TAG dist\KingdomRush.exe dist\KingdomRush.exe.sha256 --clobber
+            gh release edit $env:TAG --notes-file release-body.md
           } else {
             gh release create $env:TAG dist\KingdomRush.exe dist\KingdomRush.exe.sha256 `
-              --draft --title $env:TAG --generate-notes
+              --draft --title $env:TAG --notes-file release-body.md
           }
