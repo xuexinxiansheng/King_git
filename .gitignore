@@ -8,6 +8,11 @@ _savebackup/
 # 工作区会话数据
 .workbuddy/
 
+# PyInstaller 构建产物
+build/
+dist/
+*.spec
+
 # Python
 __pycache__/
 *.pyc

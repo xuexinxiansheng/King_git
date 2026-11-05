@@ -67,30 +67,42 @@ TABS = ("全局设置", "防御塔", "英雄与友军")
 # 内置塔数据（与 towers.txt 同格式）：无游戏/未扫描时界面也能直接建表，
 # 只是显示用的基准值；实际改数值由 payload 读游戏内模板，不依赖本表。
 TOWERS_BUILTIN = """# tpl|zh|type|level|price|cd|dmg_min|dmg_max|range|bullet|family
-tower_archer_1|弓兵塔|archer|1|70|0.800|4.00|6.00|140.00|arrow_1|archer
-tower_archer_2|射手塔|archer|2|110|0.600|7.00|11.00|160.00|arrow_2|archer
-tower_archer_3|神射手|archer|3|160|0.500|10.00|16.00|180.00|arrow_3|archer
-tower_mage_1|法师塔|mage|1|100|1.500|9.00|17.00|140.00|bolt_1|mage
-tower_mage_2|术士塔|mage|2|160|1.500|23.00|43.00|160.00|bolt_2|mage
-tower_mage_3|巫师塔|mage|3|240|1.500|40.00|74.00|180.00|bolt_3|mage
-tower_barrack_1|民兵兵营|barrack|1|70|0.000|0.00|0.00|145.00||barrack
-tower_barrack_2|步兵兵营|barrack|2|110|0.000|0.00|0.00|145.00||barrack
-tower_barrack_3|骑士兵营|barrack|3|160|0.000|0.00|0.00|145.00||barrack
-tower_engineer_1|矮人炮塔|engineer|1|125|3.000|8.00|15.00|160.00|bomb|engineer
-tower_engineer_2|进阶火炮|engineer|2|220|3.000|20.00|40.00|160.00|bomb_dynamite|engineer
-tower_engineer_3|矮人榴弹炮|engineer|3|320|3.000|30.00|60.00|179.20|bomb_black|engineer
-tower_arcane_wizard|奥术防御塔|arcane_wizard|1|300|2.000|76.00|140.00|200.00|ray_arcane|mage
-tower_barbarian|蛮族大殿|barbarian|1|230|0.000|0.00|0.00|145.00||barrack
-tower_bfg|500mm大贝莎|bfg|1|400|3.650|50.00|100.00|180.00|bomb_bfg|engineer
-tower_elf|精灵塔|elf|1|100|0.000|0.00|0.00|145.00||barrack
-tower_musketeer|火枪手要塞|musketeer|1|230|1.500|35.00|65.00|235.00|shotgun_musketeer|archer
-tower_paladin|神圣秩序|paladin|1|230|0.000|0.00|0.00|145.00||barrack
-tower_ranger|游侠匿所|ranger|1|230|0.400|13.00|19.00|200.00|arrow_ranger|archer
-tower_sasquash|Sasquash|sasquash|1|0|0.000|0.00|0.00|288.00||
-tower_sorcerer|魔法师|sorcerer|1|300|1.500|42.00|78.00|200.00|bolt_sorcerer|mage
-tower_tesla|特拉斯x104|tesla|1|375|2.200|60.00|110.00|165.00|ray_tesla|engineer
+tower_archer_1|弓兵塔|archer|1|70|0.800|4.00|6.00|140.00|arrow_1|archer|0
+tower_archer_2|射手塔|archer|2|110|0.600|7.00|11.00|160.00|arrow_2|archer|0
+tower_archer_3|神射手|archer|3|160|0.500|10.00|16.00|180.00|arrow_3|archer|0
+tower_mage_1|法师塔|mage|1|100|1.500|9.00|17.00|140.00|bolt_1|mage|0
+tower_mage_2|术士塔|mage|2|160|1.500|23.00|43.00|160.00|bolt_2|mage|0
+tower_mage_3|巫师塔|mage|3|240|1.500|40.00|74.00|180.00|bolt_3|mage|0
+tower_barrack_1|民兵兵营|barrack|1|70|0.000|0.00|0.00|145.00||barrack|3
+tower_barrack_2|步兵兵营|barrack|2|110|0.000|0.00|0.00|145.00||barrack|3
+tower_barrack_3|骑士兵营|barrack|3|160|0.000|0.00|0.00|145.00||barrack|3
+tower_engineer_1|矮人炮塔|engineer|1|125|3.000|8.00|15.00|160.00|bomb|engineer|0
+tower_engineer_2|进阶火炮|engineer|2|220|3.000|20.00|40.00|160.00|bomb_dynamite|engineer|0
+tower_engineer_3|矮人榴弹炮|engineer|3|320|3.000|30.00|60.00|179.20|bomb_black|engineer|0
+tower_arcane_wizard|奥术防御塔|arcane_wizard|1|300|2.000|76.00|140.00|200.00|ray_arcane|mage|0
+tower_barbarian|蛮族大殿|barbarian|1|230|0.000|0.00|0.00|145.00||barrack|3
+tower_bfg|500mm大贝莎|bfg|1|400|3.650|50.00|100.00|180.00|bomb_bfg|engineer|0
+tower_elf|精灵塔|elf|1|100|0.000|0.00|0.00|145.00||barrack|4
+tower_musketeer|火枪手要塞|musketeer|1|230|1.500|35.00|65.00|235.00|shotgun_musketeer|archer|0
+tower_paladin|神圣秩序|paladin|1|230|0.000|0.00|0.00|145.00||barrack|3
+tower_ranger|游侠匿所|ranger|1|230|0.400|13.00|19.00|200.00|arrow_ranger|archer|0
+tower_sasquash|Sasquash|sasquash|1|0|0.000|0.00|0.00|288.00|||0
+tower_sorcerer|魔法师|sorcerer|1|300|1.500|42.00|78.00|200.00|bolt_sorcerer|mage|0
+tower_tesla|特拉斯x104|tesla|1|375|2.200|60.00|110.00|165.00|ray_tesla|engineer|0
 """
 TW_COL_W = 100      # 攻速/伤害/范围 列宽，表头与数据行共用，保证对齐
+
+# 游戏内脚本版本落后时，通过 cmd.txt 让它在进程里重载新载荷。
+# 已注入的进程不会因为再注入一次 DLL 而重新执行 DllMain，只能这样就地换。
+PAYLOAD_SYNC = r'''local p = (os.getenv("LOCALAPPDATA") or ".") .. "\\KR_Trainer\\payload.lua"
+local h = io.open(p, "rb")
+if h then
+  local src = h:read("*a")
+  h:close()
+  local f = loadstring(src, "=payload")
+  if f then pcall(f) end
+end
+return "krt-sync"'''
 
 
 def asset(name):
@@ -627,12 +639,15 @@ class FuncRow(QWidget):
 
 
 class TowerCell(QWidget):
-    """塔参数单元格：勾选框 + 倍数输入框。"""
+    """塔参数单元格：勾选框 + 数值输入框（倍数，或士兵数量这类定量值）。"""
     changed = Signal()
 
-    def __init__(self, value="2", enabled=True, parent=None):
+    def __init__(self, value="2", enabled=True, parent=None, label="", minimum=None, maximum=None,
+                 tip=""):
         super().__init__(parent)
         self.setFixedHeight(28)
+        if tip:
+            self.setToolTip(tip)
         h = QHBoxLayout(self)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(6)
@@ -643,6 +658,13 @@ class TowerCell(QWidget):
             self.switch.setCursor(Qt.ForbiddenCursor)
         h.addWidget(self.switch)
 
+        if label:
+            cap = QLabel(label)
+            cap.setFont(font(10.5, QFont.DemiBold))
+            cap.setStyleSheet("color:%s;background:transparent;" % INK_DIM)
+            h.addWidget(cap)
+
+        self._fallback = str(value)
         self.edit = QLineEdit(value)
         self.edit.setObjectName("tw")
         self.edit.setFixedSize(48, 26)
@@ -655,6 +677,9 @@ class TowerCell(QWidget):
             self.edit.clear()
             self.edit.setPlaceholderText("—")
         h.addWidget(self.edit)
+        if minimum is not None or maximum is not None:
+            self.edit.setValidator(QIntValidator(minimum if minimum is not None else 0,
+                                                maximum if maximum is not None else 99, self))
         self.enabled = enabled
 
     def _sync(self, on):
@@ -667,19 +692,25 @@ class TowerCell(QWidget):
         self.switch.setChecked(on)
 
     def value(self):
-        return (self.edit.text() or "2").strip()
+        return (self.edit.text() or self._fallback).strip()
 
     def setValue(self, v):
         self.edit.setText(str(v))
 
 
 class TowerRow(QWidget):
-    """一行防御塔系：色条 + 系名 + 成员/原始参数 + 攻速/伤害/范围三格。"""
+    """一行防御塔系：色条 + 系名 + 成员/原始参数 + 数值格。
+
+    普通系是「攻速 / 伤害 / 范围」三格；兵营系不自己攻击，改成「士兵数量 + 范围」：
+    士兵数量占前两列宽度，和表头列宽对齐。
+    """
     changed = Signal()
 
-    def __init__(self, key, title, info, has_attack, tip="", color=INK_FAINT, parent=None):
+    def __init__(self, key, title, info, has_attack, tip="", color=INK_FAINT,
+                 barrack=False, soldiers=0, parent=None):
         super().__init__(parent)
         self.tpl = key
+        self.barrack = barrack
         self.setMinimumHeight(36)
         self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         if tip:
@@ -704,12 +735,27 @@ class TowerRow(QWidget):
         sub.setStyleSheet("color:%s;background:transparent;" % INK_FAINT)
         h.addWidget(sub)
         h.addStretch(1)
-        self.cell_spd = TowerCell("2", has_attack)
-        self.cell_dmg = TowerCell("2", has_attack)
+        self.cell_spd = None
+        self.cell_dmg = None
+        self.cell_sold = None
         self.cell_rng = TowerCell("2", True)
-        for cell in (self.cell_spd, self.cell_dmg, self.cell_rng):
+        cols = []
+        if barrack:
+            self.cell_sold = TowerCell(
+                str(soldiers or 3), True, label="士兵数量", minimum=1, maximum=20,
+                tip="每个兵营的士兵数（1–20）。兵营按这个值自动补人，升级时全部士兵一起升级；\n"
+                    "从 6 改到 8 后，多出的 2 人由兵营从门里走出（新人只能这么出场）。\n"
+                    "调小后多出来的士兵会保留到自然死亡，不会立刻消失。")
+            cols.append((self.cell_sold, TW_COL_W * 2))
+        else:
+            self.cell_spd = TowerCell("2", has_attack)
+            self.cell_dmg = TowerCell("2", has_attack)
+            cols.append((self.cell_spd, TW_COL_W))
+            cols.append((self.cell_dmg, TW_COL_W))
+        cols.append((self.cell_rng, TW_COL_W))
+        for cell, width in cols:
             col = QWidget()
-            col.setFixedWidth(TW_COL_W)
+            col.setFixedWidth(width)
             ch = QHBoxLayout(col)
             ch.setContentsMargins(0, 0, 0, 0)
             ch.setSpacing(0)
@@ -720,6 +766,8 @@ class TowerRow(QWidget):
             cell.changed.connect(self.changed)
 
     def cells(self):
+        if self.cell_sold is not None:
+            return (("sold", self.cell_sold), ("rng", self.cell_rng))
         return (("spd", self.cell_spd), ("dmg", self.cell_dmg), ("rng", self.cell_rng))
 
     def any_on(self):
@@ -879,6 +927,9 @@ class Trainer(QWidget):
         self.tower_rows = {}
         self._tw_mtime = 0
         self._tw_names = ()
+        self.payload_ver = ""
+        self._sync_tries = 0
+        self._sync_ts = 0.0
 
         os.makedirs(BRIDGE_DIR, exist_ok=True)
         self.prepare_assets()
@@ -907,6 +958,13 @@ class Trainer(QWidget):
                     shutil.copy(src, dst)
             except Exception:
                 pass
+        try:
+            with open(os.path.join(BRIDGE_DIR, "payload.lua"), "r", encoding="utf-8",
+                      errors="replace") as f:
+                m = re.search(r'version\s*=\s*"([^"]+)"', f.read(4096))
+                self.payload_ver = m.group(1) if m else ""
+        except Exception:
+            self.payload_ver = ""
 
     # -------------------------------------------------------------- paint
     def paintEvent(self, e):
@@ -1271,7 +1329,7 @@ class Trainer(QWidget):
         v.addLayout(self.tw_box)
         self.tw_empty = self.label("正在读取塔数据…", 11.5, INK_FAINT)
         self.tw_box.addWidget(self.tw_empty)
-        hint = self.label("倍数 1 = 不变，取消勾选即还原；兵营系不攻击，只有「范围」可调",
+        hint = self.label("倍数 1 = 不变，取消勾选即还原；兵营系不攻击，改调「士兵数量」与「范围」",
                           10.5, INK_FAINT)
         hint.setContentsMargins(14, 2, 12, 0)
         v.addWidget(hint)
@@ -1325,6 +1383,7 @@ class Trainer(QWidget):
                     parts[0], parts[1], parts[2], int(parts[3]), float(parts[4]),
                     float(parts[5]), float(parts[6]), float(parts[7]), float(parts[8]),
                     parts[10] if len(parts) > 10 else "",
+                    int(float(parts[11])) if len(parts) > 11 else 0,
                 ))
             except ValueError:
                 continue
@@ -1358,7 +1417,7 @@ class Trainer(QWidget):
 
         self._tw_mtime = stamp
         self.tw_status.setText(label)
-        names = tuple(r[0] for r in rows)
+        names = tuple(rows)      # 整行参与比较：士兵数这类新增列变化也会触发重建
         if names == self._tw_names:
             return
         self._tw_names = names
@@ -1367,14 +1426,14 @@ class Trainer(QWidget):
     def rebuild_towers(self, rows):
         """把 22 种塔按「系」聚合，只生成 4 行；倍数作用于该系全部等级与进阶。"""
         groups = {}
-        for tpl, zh, typ, level, price, cd, dmin, dmax, rng, fam in rows:
+        for tpl, zh, typ, level, price, cd, dmin, dmax, rng, fam, soldiers in rows:
             key = fam or TYPE_FAMILY.get(typ, "")
             if key not in FAMILY_INFO:
                 continue                     # 特殊塔（如 Sasquash）不入表
             g = groups.setdefault(key, {"members": [], "base": None})
             g["members"].append((level, zh, cd, dmin, dmax, rng))
             if g["base"] is None or level < g["base"][0]:
-                g["base"] = (level, zh, cd, dmin, dmax, rng)
+                g["base"] = (level, zh, cd, dmin, dmax, rng, soldiers)
 
         old = {key: [(k, c.isChecked(), c.value()) for k, c in r.cells()]
                for key, r in self.tower_rows.items()}
@@ -1391,14 +1450,19 @@ class Trainer(QWidget):
             if not g:
                 continue
             name, _c = FAMILY_INFO[key]
-            level, _zh, cd, dmin, dmax, rng = g["base"]
-            stat = ("L%d %.2fs %d-%d 射%d" % (level, cd, dmin, dmax, rng)
-                    if cd > 0 else ("L%d 射%d" % (level, rng)))
+            level, _zh, cd, dmin, dmax, rng, soldiers = g["base"]
+            if cd > 0:
+                stat = "L%d %.2fs %d-%d 射%d" % (level, cd, dmin, dmax, rng)
+            elif soldiers > 0:
+                stat = "L%d 射%d · 兵%d" % (level, rng, soldiers)
+            else:
+                stat = "L%d 射%d" % (level, rng)
             info = "%d 种 · %s" % (len(g["members"]), stat)
             tip = "%s 共 %d 种：\n%s" % (
                 name, len(g["members"]),
                 "\n".join("· %s" % m[1] for m in sorted(g["members"])))
-            row = TowerRow(key, name, info, cd > 0, tip, color)
+            row = TowerRow(key, name, info, cd > 0, tip, color,
+                           barrack=(key == "barrack"), soldiers=soldiers)
             row.changed.connect(self.on_change)
             for k, on, val in old.get(key, ()):
                 for ck, c in row.cells():
@@ -1572,7 +1636,44 @@ class Trainer(QWidget):
         else:
             self.readout_lbl.setText("LEVEL - · 波次 - · 金币 - · 生命 -")
 
+        self.sync_payload(st if (pids and fresh) else None)
         self.load_towers()
+
+    def sync_payload(self, st):
+        """游戏里跑的脚本比 exe 旧时，用调试通道让它就地重载（否则得重启游戏才生效）。"""
+        if not st or not self.payload_ver:
+            return
+        cur = st.get("v")
+        if not cur or cur == self.payload_ver:
+            self._sync_tries = 0
+            self.drop_sync_cmd()
+            return
+        now = time.time()
+        if self._sync_tries >= 5 or now - self._sync_ts < 4.0:
+            return
+        self._sync_tries += 1
+        self._sync_ts = now
+        try:
+            # 末尾带时间戳：载荷按「内容是否变化」判断要不要执行，内容不重复才会再触发
+            with open(os.path.join(BRIDGE_DIR, "cmd.txt"), "w", encoding="utf-8") as f:
+                f.write("%s\n-- %d" % (PAYLOAD_SYNC, int(now * 1000)))
+            self.log("游戏内脚本 v%s 较旧 → 重载到 v%s" % (cur, self.payload_ver))
+        except Exception as e:
+            self.log("重载脚本失败: %s" % e)
+
+    @staticmethod
+    def drop_sync_cmd():
+        """重载成功后清掉自己写的调试命令，别把 cmd.txt 留在游戏目录里。"""
+        path = os.path.join(BRIDGE_DIR, "cmd.txt")
+        try:
+            if not os.path.isfile(path):
+                return
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                txt = f.read()          # 先读完关掉句柄，Windows 下打开着的文件删不掉
+            if txt.startswith(PAYLOAD_SYNC):
+                os.remove(path)
+        except Exception:
+            pass
 
     def log(self, msg):
         cur = self.log_box.textCursor()

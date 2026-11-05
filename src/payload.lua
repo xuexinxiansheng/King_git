@@ -58,7 +58,7 @@ _G.__KRT_GEN = (_G.__KRT_GEN or 0) + 1
 local GEN = _G.__KRT_GEN
 
 local KRT = {
-  version = "2.0",
+  version = "2.2",
   cfg = {},
   poll = 0,
   speed = 1.0,
@@ -255,14 +255,15 @@ local function patch_damage(bullet, mult, ents)
   holder[kmax] = rnd(base.max * mult)
 end
 
+local TW_FIELD = { spd = true, dmg = true, rng = true, sold = true }
+
 local function tower_mults()
   local cfg = KRT.cfg
   if KRT._mult_cfg == cfg then return KRT._mult end
   local out = {}
   for k, v in pairs(cfg) do
-    -- Lua 模式没有 | 交替，这里用三段字母再校验
-    local name, field = tostring(k):match("^tw_(.+)_([a-z][a-z][a-z])$")
-    if name and (field == "spd" or field == "dmg" or field == "rng") then
+    local name, field = tostring(k):match("^tw_(.+)_([a-z]+)$")
+    if name and TW_FIELD[field] then
       local t = out[name]
       if not t then t = {} out[name] = t end
       t[field] = tonumber(v) or 0
@@ -272,8 +273,55 @@ local function tower_mults()
   return out
 end
 
+-- 兵营士兵数上限（界面同值）
+local SOLD_MAX = 20
+
+-- 士兵数基准值缓存：模板 barrack 组件 → 游戏原始 max_soldiers。
+-- 跨世代保留（热重载时模板已被上一代改过，重建缓存会把改后的值当成基准）。
+local sold_base = _G.__KRT_SOLD_BASE
+if not sold_base then
+  sold_base = setmetatable({}, { __mode = "k" })
+  _G.__KRT_SOLD_BASE = sold_base
+end
+KRT.sold_base = sold_base
+
+-- 目标士兵数；sold <= 0 表示还原。返回 (目标值, 原始值)
+local function barrack_soldiers(tb, sold)
+  if type(tb) ~= "table" or type(tb.max_soldiers) ~= "number" then return nil end
+  local base = sold_base[tb]
+  if not base then
+    base = tb.max_soldiers
+    sold_base[tb] = base
+  end
+  if sold <= 0 then return base, base end
+  local n = math.floor(sold + 0.5)
+  if n < 1 then n = 1 elseif n > SOLD_MAX then n = SOLD_MAX end
+  return n, base
+end
+
+-- 升级时新塔的 max_soldiers 取自**下一级模板**：只改实例的话，
+-- 升级会按模板的 3 人处理，多出来的士兵被就地解散、再让新塔从门里重新出人。
+-- 所以同系的每张兵营模板都要写（新建/升级都走模板），实例值另外每帧覆盖。
+local function apply_barrack_templates(sold)
+  local ents = edb_entities()
+  if not ents then return end
+  if KRT._sold_ents == ents and KRT._sold_val == sold then return end
+  KRT._sold_ents, KRT._sold_val = ents, sold
+  for name, tpl in pairs(ents) do
+    if type(name) == "string" and name:find("^tower_") and type(tpl) == "table" then
+      local tw = tpl.tower
+      local tb = tpl.barrack
+      if type(tb) == "table" and type(tw) == "table" and FAMILY_OF[tw.type] == "barrack" then
+        local n = barrack_soldiers(tb, sold)
+        if n and tb.max_soldiers ~= n then tb.max_soldiers = n end
+      end
+    end
+  end
+end
+
 -- 用模板原型做基准，每帧覆写；关闭时自动还原，不会累积放大
-local function apply_tower(e, tpl, spd, dmg, rng, ents)
+-- sold：兵营士兵数（兵营 update 每 tick 按 barrack.max_soldiers 补人，改这里就会补到指定人数）
+local function apply_tower(e, tpl, spd, dmg, rng, sold, ents)
   if type(tpl) ~= "table" then return end
   local ea, ta = e.attacks, tpl.attacks
   if ea and ta then
@@ -323,14 +371,25 @@ local function apply_tower(e, tpl, spd, dmg, rng, ents)
     end
   end
   local eb, tb = e.barrack, tpl.barrack
-  if eb and tb and type(eb.rally_range) == "number" and type(tb.rally_range) == "number" then
-    eb.rally_range = (rng > 0) and tb.rally_range * rng or tb.rally_range
+  if eb and tb then
+    if type(eb.rally_range) == "number" and type(tb.rally_range) == "number" then
+      eb.rally_range = (rng > 0) and tb.rally_range * rng or tb.rally_range
+    end
+    local n = barrack_soldiers(tb, sold)
+    if n then
+      if tb.max_soldiers ~= n then tb.max_soldiers = n end        -- 模板：升级/新建时继承
+      if type(eb.max_soldiers) == "number" and eb.max_soldiers ~= n then
+        eb.max_soldiers = n                                        -- 实例：现有塔立刻生效
+      end
+    end
   end
 end
 
 local function apply_towers(store)
   local ents = edb_entities()
   local mults = tower_mults()
+  local bm = mults.barrack
+  apply_barrack_templates(bm and bm.sold or 0)
   for _, e in pairs(store.entities) do
     local tw = e.tower
     local name = e.template_name
@@ -339,12 +398,13 @@ local function apply_towers(store)
       local spd = m and m.spd or 0
       local dmg = m and m.dmg or 0
       local rng = m and m.rng or 0
-      if spd > 0 or dmg > 0 or rng > 0 then
+      local sold = m and m.sold or 0
+      if spd > 0 or dmg > 0 or rng > 0 or sold > 0 then
         KRT.tw_touched[e] = true
-        apply_tower(e, ents and ents[name], spd, dmg, rng, ents)
+        apply_tower(e, ents and ents[name], spd, dmg, rng, sold, ents)
       elseif KRT.tw_touched[e] then
         KRT.tw_touched[e] = nil
-        apply_tower(e, ents and ents[name], 0, 0, 0, ents)
+        apply_tower(e, ents and ents[name], 0, 0, 0, 0, ents)
       end
     end
   end
@@ -382,6 +442,11 @@ local function scan_towers()
       elseif type(tpl.barrack) == "table" and type(tpl.barrack.rally_range) == "number" then
         range = tpl.barrack.rally_range
       end
+      local soldiers = 0
+      local tb = tpl.barrack
+      if type(tb) == "table" and type(tb.max_soldiers) == "number" then
+        soldiers = sold_base[tb] or tb.max_soldiers      -- 回报游戏原始值，不是我们改后的
+      end
       list[#list + 1] = {
         name = name,
         zh = zh_name(name),
@@ -393,6 +458,7 @@ local function scan_towers()
         dmax = dmax,
         range = range,
         bullet = bullet,
+        soldiers = soldiers,
         order = (FAMILY[tpl.tower.type] or 9) * 100 + (tpl.tower.level or 0),
       }
     end
@@ -402,13 +468,13 @@ local function scan_towers()
     return a.name < b.name
   end)
 
-  local lines = { "# tpl|zh|type|level|price|cd|dmg_min|dmg_max|range|bullet|family" }
+  local lines = { "# tpl|zh|type|level|price|cd|dmg_min|dmg_max|range|bullet|family|soldiers" }
   for _, t in ipairs(list) do
     lines[#lines + 1] = table.concat({
       t.name, t.zh, t.type, tostring(t.level), tostring(t.price),
       string.format("%.3f", t.cd), string.format("%.2f", t.dmin),
       string.format("%.2f", t.dmax), string.format("%.2f", t.range), t.bullet,
-      FAMILY_OF[t.type] or "",
+      FAMILY_OF[t.type] or "", tostring(t.soldiers),
     }, "|")
   end
   writefile(TOWERS, table.concat(lines, "\n"))
@@ -466,74 +532,94 @@ local function apply_hero_max(store)
   end
 end
 
+-- 技能冷却：按钮的 cooldown_time 只在创建时从模板 cooldown 赋值一次，
+-- 直接写 0 之后游戏自己不会还原，所以关闭开关要手动写回原值（否则本局一直无冷却）。
+local POWER_TPL = { "user_power_1", "re_current_1" }   -- power_1 火雨 / power_2 援军
+local cd_base = setmetatable({}, { __mode = "k" })
+KRT.cd_base = cd_base
+
+local function power_template_cd(i)
+  local ents = edb_entities()
+  local tpl = ents and ents[POWER_TPL[i]]
+  if type(tpl) == "table" and type(tpl.cooldown) == "number" and tpl.cooldown > 0 then
+    return tpl.cooldown
+  end
+end
+
 local function apply_nocd(game)
   local g = game.game_gui
   if type(g) ~= "table" then return end
-  for i = 1, 2 do
+  local on = KRT.cfg.nocd == 1
+  for i = 1, #POWER_TPL do
     local p = g["power_" .. i]
-    if type(p) == "table" and type(p.cooldown_time) == "number" and p.cooldown_time > 0 then
-      p.cooldown_time = 0
+    if type(p) == "table" and type(p.cooldown_time) == "number" then
+      local base = cd_base[p]
+      if not base then
+        -- 基准优先用模板 cooldown（按钮创建时就是拿它赋值的），查不到再记首次见到的值
+        base = power_template_cd(i) or ((p.cooldown_time > 0) and p.cooldown_time) or 2
+        cd_base[p] = base
+      end
+      local want = on and 0 or base
+      if p.cooldown_time ~= want then p.cooldown_time = want end
     end
   end
 end
 
--- 援军总数：援军是 re_* 士兵模板（reinforcement 组件，duration=20s）。
+-- 援军总数：游戏点一次援军按钮，Power2Button.fire 里同步建 2 个 re_* 士兵。
 --
--- 为什么不用「包装插入函数」：游戏生成援军不走 simulation.queue_insert_entity（实测包了没反应），
--- 而包装 edb.create_entity 还会被子弹/特效高频调用、位置也还没设置好。
--- 改成**看实体表**：每 tick 扫一遍 store.entities 里新出现的 re_* 实体，发现新面孔就补人。
--- 这条路与生成方式无关，不会漏，也不会重复（补出来的实体记在 _own 里，不会被再认成新面孔）。
-local REINF_BASE = 2
+-- 走两条路：
+--   1) 主路：包住 Power2Button.fire，点一次补一次 —— 位置就是点击点，不依赖扫描/计时，
+--      反复连点也不会漏（旧实现用 0.6s 时间窗去重，连点会被整批吞掉，表现就是只出 2 个）；
+--   2) 兜底：拿不到 Power2Button（版本差异）时扫实体表，已见记录按**实体对象**存。
+--      旧实现按 id 存，id 复用后新兵会被当成老面孔，同样表现为只出 2 个。
 local REINF_MAX = 10
 
-local function reinf_extra()
-  local total = tonumber(KRT.cfg and KRT.cfg.reinf_add) or 0
-  if total > REINF_MAX then total = REINF_MAX end      -- 硬上限，防误填大数卡死
-  local extra = total - REINF_BASE
-  if extra <= 0 then return 0 end
-  return extra
+local function reinf_total()
+  local t = tonumber(KRT.cfg and KRT.cfg.reinf_add) or 0
+  if t <= 0 then return 0 end
+  if t > REINF_MAX then t = REINF_MAX end      -- 硬上限，防误填大数卡死
+  return math.floor(t)
 end
 
--- 补人：新建一个同模板援军，然后把「集结点 nav_rally.pos」和「移动目标 motion.dest」
--- 一起同步成源实体的值（模板里默认是 0,0，不同步就会朝左下角原点跑），再插队。
-local function spawn_reinf_copies(game, store, src, extra, own)
+-- 补人：新建同模板援军，位置/集结点/移动目标都设成它自己的生成点
+-- （模板里是 0,0，不同步就会朝左下角原点跑）。cx/cy 为空时用源士兵的位置。
+local function spawn_reinf_copies(game, store, src, count, own, cx, cy)
   local sim = game and game.simulation
   local ok, edb = pcall(require, "entity_db")
-  if not ok or type(edb) ~= "table" or type(sim) ~= "table" then return 0 end
-  local tpl = src.template_name
-  local x = type(src.pos) == "table" and src.pos.x or 0
-  local y = type(src.pos) == "table" and src.pos.y or 0
-  -- 集结点：援军的 nav_rally.pos 就是「呼叫点」。模板里默认是 (0,0)，
-  -- 不跟着源实体设，副本就会朝左下角原点跑。
-  local rx, ry = x, y
-  local nr0 = src.nav_rally
-  if type(nr0) == "table" and type(nr0.pos) == "table" then
-    rx = tonumber(nr0.pos.x) or x
-    ry = tonumber(nr0.pos.y) or y
-  end
-  -- create_entity 分配的 id 偶尔会和场上实体撞（撞了插队会被忽略），撞了就换一个新 id
-  local maxid = 0
-  for id in pairs(store.entities) do
-    if type(id) == "number" and id > maxid then maxid = id end
+  if not ok or type(edb) ~= "table" or type(sim) ~= "table" or count <= 0 then return 0 end
+  local tpl = src and src.template_name
+  if type(tpl) ~= "string" then return 0 end
+  local x, y = cx, cy
+  if type(x) ~= "number" or type(y) ~= "number" then
+    x = type(src.pos) == "table" and src.pos.x or 0
+    y = type(src.pos) == "table" and src.pos.y or 0
+    local nr0 = src.nav_rally
+    if type(nr0) == "table" and type(nr0.pos) == "table" then
+      x = tonumber(nr0.pos.x) or x
+      y = tonumber(nr0.pos.y) or y
+    end
   end
   local angle0 = math.random() * math.pi * 2
   local added = 0
-  for i = 1, extra do
-    local copy
+  for i = 1, count do
     local okc, c = pcall(edb.create_entity, edb, tpl)
-    if okc and type(c) == "table" then copy = c end
+    local copy = okc and c or nil
     if type(copy) == "table" and type(copy.pos) == "table" then
       local cid = copy.id
-      if type(cid) ~= "number" or cid == src.id or store.entities[cid] ~= nil then
-        maxid = maxid + 1
-        copy.id = maxid
+      if type(cid) ~= "number" or store.entities[cid] ~= nil or (src and cid == src.id) then
+        -- id 撞了就换一个空的，同时推进 edb 计数器，避免后续实体再撞
+        local nid = tonumber(edb.last_id) or 1
+        repeat nid = nid + 1 until store.entities[nid] == nil
+        edb.last_id = nid + 1
+        copy.id = nid
       end
-      local a = angle0 + (i / extra) * math.pi * 2
-      local px, py = rx + math.cos(a) * 18, ry + math.sin(a) * 18
+      local a = angle0 + (i / count) * math.pi * 2
+      local px, py = x + math.cos(a) * 20, y + math.sin(a) * 20
       copy.pos.x, copy.pos.y = px, py
-      -- 集结点/目的地都设成**它自己的位置**：设成源士兵的位置，8 个副本会自动走过去叠在一起
+      -- 集结点设成点击点、目的地设成自己脚下：副本各自站位，不会叠在一起
       local nr = copy.nav_rally
       if type(nr) == "table" then
+        if type(nr.center) == "table" then nr.center.x, nr.center.y = x, y end
         if type(nr.pos) == "table" then nr.pos.x, nr.pos.y = px, py end
         nr.new = false
       end
@@ -544,12 +630,78 @@ local function spawn_reinf_copies(game, store, src, extra, own)
       end
       if pcall(sim.queue_insert_entity, sim, copy) then
         added = added + 1
-        if own and copy.id then own[copy.id] = true end
+        if own then own[copy] = true end
       end
     end
   end
   return added
 end
+
+local function reinf_seen()
+  if not KRT._reinf_known then KRT._reinf_known = setmetatable({}, { __mode = "k" }) end
+  if not KRT._own then KRT._own = setmetatable({}, { __mode = "k" }) end
+  return KRT._reinf_known, KRT._own
+end
+
+-- 找这一批新兵（id >= since 的 re_*），返回首个样本与数量
+local function reinf_new_batch(store, since)
+  local src, n = nil, 0
+  for _, e in pairs(store.entities) do
+    local t = e.template_name
+    if type(t) == "string" and t:find("^re_") and type(e.id) == "number" and e.id >= since then
+      n = n + 1
+      src = src or e
+    end
+  end
+  return src, n
+end
+
+-- 点击后的补人：本批已经补齐 total 个，多的由这里加，少的直接跳过
+local function reinf_after_click(wx, wy, before_id)
+  local game = active_game()
+  local store = game and game.store
+  if type(store) ~= "table" then return end
+  local known, own = reinf_seen()
+  local src, n = reinf_new_batch(store, before_id)
+  for _, e in pairs(store.entities) do
+    local t = e.template_name
+    if type(t) == "string" and t:find("^re_") and type(e.id) == "number" and e.id >= before_id then
+      known[e] = true                     -- 已处理，兜底扫描别重复补
+    end
+  end
+  local total = reinf_total()
+  if not src or total <= 0 then return end
+  local add = total - n
+  if add <= 0 then return end
+  local added = spawn_reinf_copies(game, store, src, add, own, wx, wy)
+  if added > 0 then log("reinf: +" .. added .. " (" .. src.template_name .. ")") end
+end
+
+-- 包装 Power2Button.fire（援军按钮）。热重载时先拆上一代的包装再装新的，避免多层套娃。
+local function install_reinf_hook()
+  local cls = _G.Power2Button
+  if type(cls) ~= "table" or type(cls.fire) ~= "function" then return false end
+  local old = _G.__KRT_REINF_HOOK
+  if type(old) == "table" and old.wrapper and cls.fire == old.wrapper then
+    if KRT.reinf_hooked then return true end
+    cls.fire = old.orig
+  end
+  local orig = cls.fire
+  local wrapper = function(self, wx, wy)
+    local before
+    local ok, edb = pcall(require, "entity_db")
+    if ok and type(edb) == "table" then before = tonumber(edb.last_id) end
+    local a, b, c = orig(self, wx, wy)
+    if GEN == _G.__KRT_GEN and before then pcall(reinf_after_click, wx, wy, before) end
+    return a, b, c
+  end
+  cls.fire = wrapper
+  _G.__KRT_REINF_HOOK = { orig = orig, wrapper = wrapper }
+  KRT.reinf_hooked = true
+  log("reinf hook installed")
+  return true
+end
+KRT.install_reinf_hook = install_reinf_hook
 
 -- 援军持续时间：reinforcement.duration（默认 20 秒）。
 -- 模板与场上实例都要写：模板管新生成的，实例管已经在场上的。
@@ -578,40 +730,49 @@ local function apply_reinf_time(store)
   end
 end
 
-local function apply_reinf_watch(game, store)
-  local extra = reinf_extra()
-  if extra <= 0 then return end
+-- 钩子是否还在（游戏重建类/换脚本会把 cls.fire 换掉）
+local function reinf_hook_alive()
+  local cls = _G.Power2Button
+  local h = _G.__KRT_REINF_HOOK
+  return KRT.reinf_hooked and type(cls) == "table" and type(h) == "table"
+         and type(h.wrapper) == "function" and cls.fire == h.wrapper
+end
 
+-- 兜底：没有 Power2Button 可包时，扫实体表补人（按实体对象去重，不再按 id）
+local function apply_reinf_watch(game, store)
+  if KRT.reinf_hooked then
+    if reinf_hook_alive() then return end
+    pcall(install_reinf_hook)          -- 类被重建：立刻重装
+    if reinf_hook_alive() then return end
+  end
   -- 换关卡时清空记录（id 会从头开始分配）
-  local lv = store.level_name
+  local lv = tostring(store.level_name) .. "#" .. tostring(store.level_idx)
   if KRT._reinf_level ~= lv then
     KRT._reinf_level = lv
-    KRT._reinf_known = {}
-    KRT._own = {}
+    KRT._reinf_known = setmetatable({}, { __mode = "k" })
+    KRT._own = setmetatable({}, { __mode = "k" })
   end
-  local known = KRT._reinf_known or {}
-  local own = KRT._own or {}
-  KRT._reinf_known, KRT._own = known, own
+  local known, own = reinf_seen()
 
-  local fresh, ids = nil, {}
-  for id, e in pairs(store.entities) do
-    local tpl = e.template_name
-    if type(tpl) == "string" and tpl:find("^re_") then
-      ids[#ids + 1] = id
-      if not own[id] and not known[id] then fresh = fresh or e end
+  local fresh, n, batch = nil, 0, {}
+  for _, e in pairs(store.entities) do
+    local t = e.template_name
+    if type(t) == "string" and t:find("^re_") and not own[e] and not known[e] then
+      n = n + 1
+      fresh = fresh or e
+      batch[#batch + 1] = e
     end
   end
-  for i = 1, #ids do known[ids[i]] = true end   -- 先登记，避免波次窗口内被反复认成新面孔
+  -- 不论开关都先登记：中途打开开关时，场上已有的援军不会被当成「刚召的」而白补一波
+  for i = 1, #batch do known[batch[i]] = true end
 
-  if not fresh then return end
-  local now = os.clock()
-  if now - (KRT._reinf_burst or -1) <= 0.6 then return end   -- 一次呼叫只补一波
+  local total = reinf_total()
+  if not fresh or total <= 0 then return end
+  local add = total - n
+  if add <= 0 then return end
 
-  local added = spawn_reinf_copies(game, store, fresh, extra, own)
-  if added > 0 then
-    KRT._reinf_burst = now
-    log("reinf: +" .. added .. " (" .. fresh.template_name .. ")")
-  end
+  local added = spawn_reinf_copies(game, store, fresh, add, own)
+  if added > 0 then log("reinf(fallback): +" .. added .. " (" .. fresh.template_name .. ")") end
 end
 
 -- ================================================================ 04 全局
@@ -726,9 +887,9 @@ local function apply()
 
   kill_bonus(store)
   pcall(apply_towers, store)
-  if cfg.nocd == 1 then apply_nocd(game) end
+  apply_nocd(game)          -- 关闭时也要跑：把 cooldown_time 写回模板值
   apply_hero_max(store)
-  if (tonumber(cfg.reinf_add) or 0) > 0 then apply_reinf_watch(game, store) end
+  apply_reinf_watch(game, store)
   if (tonumber(cfg.reinf_time) or 0) > 0 then apply_reinf_time(store) end
   apply_auto_wave(game, store)
 end
@@ -836,6 +997,7 @@ end
 local function attach()
   if GEN ~= _G.__KRT_GEN then return end
   if type(love) ~= "table" then return end
+  pcall(install_reinf_hook)     -- 每 2s 自愈一次：类被重建也能重新包上
   if love.graphics then hook_fn(love.graphics, "present") end
   if love.timer then hook_fn(love.timer, "step") end
   hook_fn(love, "draw")
@@ -845,12 +1007,11 @@ KRT.attach = attach
 
 pcall(load_state)
 -- 排障入口：cmd.txt 可调用 KRT.scan_towers() / KRT.apply_towers(store)
--- 清掉上一代留在旧壳里的处理函数（旧壳仍在 sim / edb 上，不清就会继续跑旧逻辑）
-_G.__KRT_REINF_HANDLER = nil
-_G.__KRT_CREATE_HANDLER = nil
+-- 旧壳的援军钩子由 install_reinf_hook 拆（保留 __KRT_REINF_HOOK，才能拿回原始 fire）
 
 KRT.scan_towers = scan_towers
 KRT.apply_towers = apply_towers
+KRT.apply = apply
 KRT.apply_reinf_time = apply_reinf_time
 -- 载入时先记住已有的 cmd.txt，避免重载时把旧命令再执行一遍（会互相触发死循环）
 KRT.last_cmd = readfile(BASE .. "cmd.txt")
