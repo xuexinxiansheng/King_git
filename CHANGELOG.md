@@ -4,10 +4,7 @@
 
 ## v1.2 · 2026-11-05
 
-- **构建改为 GitHub Actions**：推 tag 自动打包、自检并生成草稿 Release，exe 与源码版本一一对应
-- 新增 `--selftest`：检查内嵌 `payload.lua`、`krbridge.dll` 与 Qt 平台插件是否完整；`--version` 输出构建信息（commit / tag / 时间）
-- 依赖版本锁定（`src/requirements.txt`），本机与 CI 产物一致
-- 功能与 v1.1 相同，无行为变更
+功能与 v1.1 相同，只是改成 GitHub 自动打包，不用重新下载。
 
 成品：`KingdomRush.exe`（免安装，需管理员）
 
