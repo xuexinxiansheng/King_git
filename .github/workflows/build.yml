@@ -70,7 +70,9 @@ jobs:
         run: |
           Move-Item dist\KingdomRushTrainer.exe dist\KingdomRush.exe
           $hash = (Get-FileHash dist\KingdomRush.exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  KingdomRush.exe" | Set-Content dist\KingdomRush.exe.sha256 -Encoding ascii
+          [IO.File]::WriteAllText(
+            "$PWD\dist\KingdomRush.exe.sha256", "$hash  KingdomRush.exe`n",
+            [Text.UTF8Encoding]::new($false))
 
       - name: 从 CHANGELOG 生成 Release 说明
         shell: pwsh
